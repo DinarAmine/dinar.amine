@@ -1,0 +1,43 @@
+//file ex2b.edp
+real zer = 0.0001;
+border a(t=0,4.0){x=t; y = 0; label =1;};
+border b(t=0,2.0){x=4; y = t; label =2;};
+border c(t=0,2.0){x=4-t; y = 2; label =3;};
+border d(t=2.0,4.0){x=2; y = t; label =4;};
+border e(t=2.0,4.0){x=4-t; y =4; label =5;};
+border ff(t=0,4.0){x=0; y =4-t; label =6;};
+
+mesh Th=buildmesh(a(40)+b(20)+c(20)+d(20)+e(20)+ff(40));
+plot (Th, wait=1) ;
+
+fespace Vh(Th,P1); // for the mesh size 
+Vh v,u,w,vy,vx;
+
+func f=0;
+real mu=0;
+real bx=y;
+real by=-x;
+real eps=1e-3;
+
+int i=0;
+real delta = 1.0;
+
+fespace Nh(Th,P0);
+Nh t = hTriangle/sqrt(bx^2+by^2);
+//Vh h= hTriangle;
+
+problem cd(u,v,solver=GMRES,init=i) =            
+    int2d(Th)( eps*(dx(u)*dx(v) + dy(u)*dy(v))
+               +bx*dx(u)*v+by*dy(u)*v+mu*u*v  
+		+delta*(-eps*(dxx(u)+dyy(u))+bx*dx(u)+by*dy(u)+mu*u)*t*(bx*dx(v)+by*dy(v)))
+ 		 -int2d(Th)(f*v)
+		+on(6, u=1)                 
+ 		+on(3,4,5,u=0);     
+
+cd; 
+
+plot(u,value=true,wait=1);
+
+
+
+

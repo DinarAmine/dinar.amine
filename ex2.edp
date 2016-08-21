@@ -1,0 +1,28 @@
+//file ex2.edp
+
+mesh Th = square(50,50);
+
+plot(Th,wait=1);
+
+fespace Vh(Th,P1); 
+Vh v,u,w,vy,vx;
+func f=1;
+int i=0;
+real delta = 1.0;
+real bx=1.0;
+real by=1.0;
+real eps=1e-3;
+real mu=1.0;
+fespace Nh(Th,P0);
+Nh t = hTriangle/sqrt(bx^2+by^2);
+//Vh h= hTriangle;
+
+ problem cd(u,v,solver=GMRES,init=i) =              
+    int2d(Th)( eps*(dx(u)*dx(v) + dy(u)*dy(v))
+               +bx*dx(u)*v+by*dy(u)*v+mu*u*v  
+		+delta*(-eps*(dxx(u)+dyy(u))+bx*dx(u)+by*dy(u)+mu*u)*t*(bx*dx(v)+by*dy(v)))
+ 		 -int2d(Th)(f*v)                
+ 		+ on(1,2,3,4,u=0);                 
+cd; 
+plot(u,value=true,wait=1);
+

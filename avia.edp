@@ -1,0 +1,110 @@
+// file avia.edp
+int D = 1; //etiquette Dirichlet
+int N = 2; //etiquette Neumann
+int R = 3; //etiquette Robin
+int PCBIC = 4; //PCB vs IC
+int PCBAir=5; //PCB vs Air
+int ICAir=4; //IC vs Air
+int AirAir=7; //Air vs Air
+
+
+//Coordonnées des points d'extrémité pour chaque frontière
+real x1=0.0,x2=0.002,x3=0.004,x4=0.006,y1=0.0,y2=0.02, y3=0.04, y4=0.07, y5=0.09,y6=0.13;
+
+//nous commençons par le bas, avec le dernier (troisieme) x interval
+//nous montons
+//nous prenons les mêmes x intervalle , mais sur le dessus
+
+border a3(t = x3,x4){x=t; y=y1; label=1;};
+border s3(t = y1,y6){x=x4; y=t; label=2;};
+border b3(t = x4,x3){x=t; y=y6; label=3;};
+
+//nous marchons autour chaque horaire regtangle
+
+border c1(t = y6,y5){x=x3; y=t; label=7;};
+border c2(t = x3,x2){x=t; y=y5; label=4;};
+border c3(t = y5,y6){x=x2; y=t; label=5;};
+border c4(t = x3,x2){x=t; y=y6; label=3;};
+
+border d1(t = y5,y4){x=x3; y=t; label=4;};
+border d2(t = x3,x2){x=t; y=y4; label=4;};
+border d3(t = y4,y5){x=x2; y=t; label=4;};
+
+
+border f1(t = y4,y3){x=x3; y=t; label=7;};
+border f2(t = x3,x2){x=t; y=y3; label=4;};
+border f3(t = y3,y4){x=x2; y=t; label=5;};
+
+
+border g1(t = y3,y2){x=x3; y=t; label=4;};
+border g2(t = x3,x2){x=t; y=y2; label=4;};
+border g3(t = y2,y3){x=x2; y=t; label=4;};
+
+
+border h1(t = y2,y1){x=x3; y=t; label=7;};
+border h2(t = x2,x3){x=t; y=y1; label=1;};
+border h3(t = y1,y2){x=x2; y=t; label=5;};
+
+//lorsque le dernier rectangle est fait,
+//le second fond x intervalle (x2 - x3) est effectuée par h2,
+//donc nous avons seulement à ajouter le premier x intervalle ,
+//partie externe PCB et PCB supérieure.
+
+border a1(t = x1,x2){x=t; y=y1; label=1;};
+border s1(t = y6,y1){x=x1; y=t; label=2;};
+border b1(t = x2,x1){x=t; y=y6; label=2;};
+
+
+
+
+mesh Th = buildmesh(a3(5)+s3(20)+b3(5)
+	+c1(10)+c2(10)+c3(10)+c4(5)
+	+d1(10)+d2(10)+d3(10)
+	+f1(10)+f2(10)+f3(10)
+	+g1(10)+g2(10)+g3(10)
+	+h1(10)+h2(5)+h3(10)
+	+a1(5)+s1(20)+b1(5));
+
+//Nous donnons le nom de chaque région
+int PCE=Th(1,1).region;
+int air1=Th(3,0).region,air2= Th(3,5).region, air3=Th(3,10).region, air4=Th(5,1).region;
+int IC1 = Th(3,3).region,IC2 = Th(3,8).region;
+
+int Q=1000000;
+
+
+fespace Sh(Th,P0); //nous prenons une fonction discontinue
+Sh reg=region; //nous définissons la fonction discont associée à un numéro de région
+plot(Th,wait=1);
+plot(reg,fill=1,wait=1,value=1,ps="region.eps");
+
+//La conductivité thermique k est évidemment différent pour chaque matériau
+Sh k=2*(region==IC1)+2*(region==IC2)+0.2*(region==PCE)+0.03*(region==air1)+0.03*(region==air2)+0.03*(region==air3)+0.03*(region==air4);
+
+//comme nous sommes dans le cas où le temps indep , nous prenons t = 1 , si nous mettons t = 0, alors la vitesse est 0 
+
+//func fvel = 1-exp(-t/3);
+real fvel = 0.3;
+real D = 0.07;
+real coef = 3/(2( (x4-x1) - (x3-x2) ));
+real top = x-(  ((x4-x1)+(x3-x2))/2 + (x2-x1) );
+real bottom= ((x4-x1)-(x3-x2))/2;
+
+//maintenant, nous mettons des conditions sur la valeur de la vitesse
+
+if (x> (x2-x1 + x3-x2)) && (x< (x2-x1 + x4-x2)){
+real vel = coef*D*(1-(top/bottom)^2)*fvel*y;
+}
+else if (x> (x2-x1)) && (x<(x2-x1 + x3-x2)){
+real vel = 0;
+}
+
+fespace Vh(Th,P1); // for the mesh size
+Vh v,u;
+
+problem cd(u,v,solver=LU,tgv=1e30) =
+    int2d(Th)( k*(dx(u)*dx(v) + dy(u)*dy(v)))
+		-int1d(Th,3)(1100*u*vel) // 3 = Robin
+		-int2d(Th)( Q*v )
+		+on(1,u=0); //1 = Dirichlet
+cd;

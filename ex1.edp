@@ -1,0 +1,79 @@
+// ex1.edp
+border D(t=0, pi/2){x=cos(t); y=sin(t); label=1;};
+border N(t=pi/2, pi){x=cos(t); y=sin(t); label=2;};
+border R(t=pi, 2*pi){x=cos(t); y=sin(t); label=3;};
+int n=5;
+//Ces boucles montre l'évolution de l'erreur avec la taille différente de meshstep
+
+for( real r=1;r<n;r+=1){
+
+int a=50;
+mesh Th=buildmesh(D(a*r) + N(a*r) + R(a*r*2));
+//plot(Th, wait=1);
+fespace Vh(Th, P1);
+Vh v, u, un;
+func f=1;
+func g = 0;
+func l = 0;
+func m = 0;
+
+//solution exacte
+
+
+func uexact=sin(pi*x)*cos(pi*y);
+un=g;
+
+//Les dérivées partielles
+
+Vh dxue=pi*cos(pi*x)*cos(pi*y);
+Vh dyue=-pi*sin(pi*x)*sin(pi*y);
+solve laplace(u,v,solver=LU, tgv=1e30)=
+int2d(Th)(dx(u)*dx(v)+dy(u)*dy(v))
+	-int2d(Th)(f*v)
+	-int1d(Th,2)(g*v)
+	-int1d(Th,3)(l*v)
+	+int1d(Th,3)(u*v)
+	+on(1,u=g);
+laplace;
+plot(u, wait=1, fill = 1);
+
+//Norme et erreur d'estimation
+
+real L2 = sqrt (int2d(Th) (u^2) );
+real L2err = sqrt(int2d(Th)((u-uexact)^2))/L2;
+
+real H1 = sqrt(L2^2+int2d(Th)(dx(u)^2+dy(u)^2));
+real H1err = sqrt(L2err^2
+		+int2d(Th)( (dx(u)-dxue)^2)/L2
+		+int2d(Th)( (dy(u)-dyue)^2)/L2 );
+
+cout<<"With D="<<a*r<<"  N="<<a*r<<"  R="<<2*a*r<<endl;
+cout<<"L2 error:"<<L2err<<endl;
+cout<<"H1 error:"<<H1err<<endl;
+}
+
+/*
+
+fespace Wh(Sh, P1); Wh v, vv;
+int steel = Sh(0.5,0).region;
+int air = Sh(-1,0).region;
+
+
+fespace W0(Sh, P0);
+W0 k = 0.01*(region ==air) + 0.1*(region==steel);
+W0 u1=dy(psi) * (region==air), u2=-dx(psi)*(region==air);
+Wh vold = 120*(region==steel);
+real dt=0.05, nbT=50;
+int i;
+
+problem thermic(v,vv,init =i, solver=LU) = int2d(Sh)(v*vv/dt+k*(dx(v)*dx(vv) + dy(v)*dy(vv))+10*(u1*dx(v)+u2*dy(v))*vv)-int2d(Sh)(vold*vv/dt);
+
+for (i=0; i<nbT;i++){
+v=vold; thermic;
+plot(v);
+
+}
+
+
+
+*/
